@@ -123,6 +123,9 @@ if(!empty(get_option('cfturnstile_key')) && !empty(get_option('cfturnstile_secre
 		wp_enqueue_script("cfturnstile", "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback", array(), '', 'true');
 	}
 	add_action("wp_enqueue_scripts", "cfturnstile_script");
+	
+	exclude_script_from_cf_rocket_loader();
+	
 	function cfturnstile_script() {
 		if ( cfturnstile_check_page() ) {
 			cfturnstile_script_enqueue();
@@ -258,4 +261,30 @@ if(!empty(get_option('cfturnstile_key')) && !empty(get_option('cfturnstile_secre
 		include( plugin_dir_path( __FILE__ ) . 'inc/bbpress.php');
 	}
 
+}
+
+function exclude_script_from_cf_rocket_loader(){
+
+	if ( is_admin() || !is_website_behind_cloudflare() ) return;
+	
+	add_filter('script_loader_tag', 'add_cf_rocket_loader_exemption_attribute', 10, 2);
+
+	function add_cf_rocket_loader_exemption_attribute($tag, $handle) {
+		
+		return $handle === 'cfturnstile' ? str_replace( ' src=', ' data-cfasync="false" src=', $tag ) : $tag;
+	}
+
+}
+
+/**
+ * Disabling attribute will be added only if the website is behind Cloudflare.
+ * With filter:
+ * 
+ * add_filter('cfasync_attribute','__return_false');
+ * 
+ * can be adding attribute disabled.
+ */
+function is_website_behind_cloudflare(){
+
+	return apply_filters( 'cfasync_attribute', isset($_SERVER['HTTP_CF_RAY'] ) );
 }
